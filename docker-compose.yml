@@ -1,0 +1,57 @@
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: fintech_ai
+
+  adminer:
+    image: mongo-express:latest
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongo
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin
+    depends_on:
+      - mongo
+
+  backend:
+    image: python:3.12-slim
+    working_dir: /app
+    command: sh -c "pip install --no-cache-dir -r requirements.txt && python backend_app.py"
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      MONGO_URI: mongodb://mongo:27017/
+      JWT_SECRET: ${JWT_SECRET:-fintech_super_secret_2026}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: claude-sonnet-4-20250514
+      PORT: 5000
+    depends_on:
+      - mongo
+    volumes:
+      - ./:/app
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 3000"
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_API_URL: http://localhost:5000
+    depends_on:
+      - backend
+    volumes:
+      - ./:/app
+
+volumes:
+  mongo_data:
