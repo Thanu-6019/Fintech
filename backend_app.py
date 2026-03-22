@@ -16,7 +16,18 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app    = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+# Allow known frontend origins (prod + Vercel preview), with optional env override.
+frontend_origins_env = os.getenv("FRONTEND_ORIGINS", "").strip()
+if frontend_origins_env:
+    allowed_frontend_origins = [o.strip() for o in frontend_origins_env.split(",") if o.strip()]
+else:
+    allowed_frontend_origins = [
+        "https://fintech03.vercel.app",
+        r"https://fintech03-.*\.vercel\.app",
+        "http://localhost:3000",
+    ]
+
+CORS(app, resources={r"/api/*": {"origins": allowed_frontend_origins}})
 sio    = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
 SECRET      = os.getenv("JWT_SECRET", "fintech_ai_secret_2026")
